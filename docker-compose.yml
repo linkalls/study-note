@@ -1,0 +1,70 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev # Default to dev stage for local development
+    container_name: nextjs_app_dev
+    ports:
+      - "3000:3000" # Development port
+    volumes:
+      - .:/app # Mount source code for hot reloading
+      - /app/node_modules # Avoid overriding container node_modules
+      - /app/.next # Avoid overriding container .next
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=development
+      # POSTGRES_URL will be picked from .env.local, ensure it points to the db service
+      # e.g., POSTGRES_URL=postgresql://user:password@db:5432/mydb
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  # To run in production mode (simulation):
+  # docker-compose up app_prod
+  app_prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner # Use the production runner stage
+    container_name: nextjs_app_prod
+    ports:
+      - "3001:3000" # Production port (host:container)
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      # POSTGRES_URL for production, ensure it points to the db service
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env.local # For POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+    environment:
+      # These will be overridden by .env.local if present there
+      - POSTGRES_USER=${POSTGRES_USER:-bun_dev_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bun_dev_password}
+      - POSTGRES_DB=${POSTGRES_DB:-bun_dev_db}
+    networks:
+      - app_network
+
+volumes:
+  postgres_data:
+
+networks:
+  app_network:
+    driver: bridge
