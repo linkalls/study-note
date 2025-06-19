@@ -26,7 +26,7 @@ export async function GET(
     // Check if file exists
     try {
       await fs.access(absolutePath);
-    } catch (error) {
+    } catch { // Removed unused 'error' variable
       return NextResponse.json({ error: "File not found." }, { status: 404 });
     }
 
